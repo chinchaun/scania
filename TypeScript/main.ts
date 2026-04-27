@@ -1,64 +1,42 @@
 import { promises as fs } from "fs";
-import { v4 as uuidv4 } from 'uuid';
 
 const API_URL = "https://api.viewcomfy.com"
 
-function buildFormData(data: {
-    params: Record<string, any>;
-    overrideWorkflowApi?: Record<string, any> | undefined;
-    prompt_id: string;
-    viewComfyApiUrl: string;
-}): FormData {
-    const { params, overrideWorkflowApi, prompt_id, viewComfyApiUrl } = data;
-    const formData = new FormData();
-    const params_str: Record<string, any> = {};
-    for (const key in params) {
-        const value = params[key];
-        if (value instanceof File) {
-            formData.set(key, value);
-        } else {
-            params_str[key] = value;
-        }
-    }
-
-    formData.set("params", JSON.stringify(params_str));
-    formData.set("prompt_id", prompt_id);
-    formData.set("view_comfy_api_url", viewComfyApiUrl);
-
-    if (overrideWorkflowApi) {
-        formData.set("workflow_api", JSON.stringify(overrideWorkflowApi));
-    }
-
-    return formData;
-}
-
-interface Infer {
-    viewComfyApiUrl: string;
-    params: Record<string, any>;
-    overrideWorkflowApi?: Record<string, any> | undefined;
+interface InferScaniaArgs {
+    imagePath: string;
+    submissionId: string;
+    status: string;
+    firstName: string;
+    lastName: string;
+    vehicleType: string;
+    orientation: string;
+    language: string;
+    market: string;
+    voiceOverLanguage: string;
     clientId: string;
     clientSecret: string;
 }
 
 /**
- * Make an inference request to the viewComfy API
+ * Make an inference request to the Scania-specific endpoint.
  *
- * @param viewComfyApiUrl - The URL to send the request to
- * @param params - The parameter to send to the workflow
- * @param overrideWorkflowApi - Optional override the default workflow_api of the deployment
- * @returns The parsed prompt result or null
+ * @returns The parsed prompt result
  */
 export const infer = async ({
-    viewComfyApiUrl,
-    params,
-    overrideWorkflowApi,
+    imagePath,
+    submissionId,
+    status,
+    firstName,
+    lastName,
+    vehicleType,
+    orientation,
+    language,
+    market,
+    voiceOverLanguage,
     clientId,
     clientSecret,
-}: Infer): Promise<IWorkflowHistoryModel> => {
+}: InferScaniaArgs): Promise<IWorkflowHistoryModel> => {
 
-    if (!viewComfyApiUrl) {
-        throw new Error("viewComfyApiUrl is not set");
-    }
     if (!clientId) {
         throw new Error("clientId is not set");
     }
@@ -66,24 +44,26 @@ export const infer = async ({
         throw new Error("clientSecret is not set");
     }
 
-    const prompt_id: string = uuidv4();
-    const auth = {
-        "client_id": clientId,
-        "client_secret": clientSecret,
-    };
+    const formData = new FormData();
+    formData.set("image_path", imagePath);
+    formData.set("submission_id", submissionId);
+    formData.set("status", status);
+    formData.set("first_name", firstName);
+    formData.set("last_name", lastName);
+    formData.set("vehicle_type", vehicleType);
+    formData.set("orientation", orientation);
+    formData.set("language", language);
+    formData.set("market", market);
+    formData.set("voice_over_language", voiceOverLanguage);
 
-    const formData = buildFormData({
-        params,
-        overrideWorkflowApi,
-        viewComfyApiUrl,
-        prompt_id,
-    });
-
-    const response = await fetch(`${API_URL}/api/workflow/infer`, {
+    const response = await fetch(`${API_URL}/api/workflow/infer-scania`, {
         method: "POST",
         body: formData,
         redirect: "follow",
-        headers: auth,
+        headers: {
+            "client_id": clientId,
+            "client_secret": clientSecret,
+        },
     });
 
     if (!response.ok) {
@@ -100,14 +80,10 @@ export const inferCancel = async (args: {
     clientId: string;
     clientSecret: string;
     promptId: string;
-    viewComfyApiUrl: string
 }) => {
 
-    const { promptId, viewComfyApiUrl, clientId, clientSecret } = args
+    const { promptId, clientId, clientSecret } = args
 
-    if (!viewComfyApiUrl) {
-        throw new Error("viewComfyApiUrl is not set");
-    }
     if (!clientId) {
         throw new Error("clientId is not set");
     }
@@ -130,7 +106,6 @@ export const inferCancel = async (args: {
             method: "POST",
             body: JSON.stringify({
                 promptId,
-                viewComfyApiUrl
             }),
             headers,
         });
@@ -213,40 +188,25 @@ export class PromptResult {
     }
 }
 
-const viewComfyApiUrl = "https://viewcomfy--4714-4605-zyizrd-comfyui-infer.modal.run";
 const clientId = "client_id";
 const clientSecret = "client_secret";
 
 const generate = async () => {
+
     try {
-
-        // Advanced feature: overwrite default workflow with a new one:
-        // https://github.com/ViewComfy/cloud-public/tree/main/ViewComfy_API#using-the-api-with-a-different-workflow
-        const overrideWorkflowApiPath = null;
-
-        const params: Record<string, any> = {};
-
-        // Add your parameters here
-        params["1660-inputs-image"] = "8.png"
-
-
-        let overrideWorkflowApi = null;
-        if (overrideWorkflowApiPath) {
-            try {
-                const fileContent = await fs.readFile(overrideWorkflowApiPath, "utf-8");
-                overrideWorkflowApi = JSON.parse(fileContent);
-            } catch (error) {
-                console.error("Override workflow API path does not exist");
-            }
-        }
-
-        // Call the API and get the logs of the execution in real time
         const result = await infer({
-            viewComfyApiUrl,
-            params,
+            imagePath: "upload_69d8e31681714987bb0871f0.jpeg",
+            submissionId: "69d8e18a02dCsa",
+            status: "pending",
+            firstName: "First",
+            lastName: "Last",
+            vehicleType: "truck",
+            orientation: "front",
+            language: "en",
+            market: "se",
+            voiceOverLanguage: "en",
             clientId,
             clientSecret,
-            overrideWorkflowApi
         });
 
         console.log({ result });
@@ -318,7 +278,6 @@ async function cancel() {
         clientId,
         clientSecret,
         promptId,
-        viewComfyApiUrl
     });
     console.log({ result });
 }
