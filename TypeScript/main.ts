@@ -15,6 +15,7 @@ interface InferScaniaArgs {
     voiceOverLanguage: string;
     clientId: string;
     clientSecret: string;
+    env: string;
 }
 
 /**
@@ -35,6 +36,7 @@ export const infer = async ({
     voiceOverLanguage,
     clientId,
     clientSecret,
+    env
 }: InferScaniaArgs): Promise<IWorkflowHistoryModel> => {
 
     if (!clientId) {
@@ -55,6 +57,8 @@ export const infer = async ({
     formData.set("language", language);
     formData.set("market", market);
     formData.set("voice_over_language", voiceOverLanguage);
+    formData.set("env", env);
+
 
     const response = await fetch(`${API_URL}/api/workflow/infer-scania`, {
         method: "POST",
@@ -195,16 +199,17 @@ const generate = async () => {
 
     try {
         const result = await infer({
-            imagePath: "upload_69d8e31681714987bb0871f0.jpeg",
-            submissionId: "69d8e18a02dCsa",
+            imagePath: "69fdeea7afab4675003a66aa.jpeg",
+            submissionId: "69e18a02dCDdzxD123PROD",
             status: "pending",
-            firstName: "First",
-            lastName: "Last",
+            firstName: "Hauke",
+            lastName: "Rules",
             vehicleType: "truck",
-            orientation: "front",
+            orientation: "portrait",
             language: "en",
             market: "se",
             voiceOverLanguage: "en",
+            env: "production",
             clientId,
             clientSecret,
         });
